@@ -1,0 +1,17 @@
+node_modules
+dist
+build
+coverage
+.git
+.gitignore
+*.md
+.env
+.env.*
+!.env.example
+.prisma
+.claude
+.cursor
+.agents
+.devin
+*.tsbuildinfo
+npm-debug.log*

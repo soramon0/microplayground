@@ -1,0 +1,102 @@
+apiVersion: skaffold/v4beta14
+kind: Config
+metadata:
+  name: ecommerce-microservices
+
+build:
+  local:
+    push: false # Prevents Skaffold from trying to push to Docker Hub
+    tryImportMissing: true # Pull missing base images into the local Docker daemon
+    concurrency: 3
+  artifacts:
+    - image: order-service
+      context: svc/order-service
+      docker:
+        target: dev
+      sync:
+        manual:
+          - src: "**/*.go"
+            dest: .
+          - src: "go.mod"
+            dest: .
+          - src: "go.sum"
+            dest: .
+    - image: product-service
+      context: svc/product-service
+      docker:
+        target: dev
+      sync:
+        manual:
+          - src: "src/**/*.ts"
+            dest: .
+    - image: user-service
+      context: svc/user-service
+      docker:
+        target: dev
+      sync:
+        manual:
+          - src: "src/**/*.ts"
+            dest: .
+          - src: "src/prisma/**/*.prisma"
+            dest: .
+          - src: "src/prisma/**/*.json"
+            dest: .
+
+manifests:
+  rawYaml:
+    - k8s/*.yaml
+
+deploy:
+  statusCheckDeadlineSeconds: 300 # Fail clearly if pods/PVCs stay pending (e.g. disk pressure)
+  kubectl:
+    # Pull Postgres and load it into k3d before applying manifests (third-party image).
+    hooks:
+      before:
+        - host:
+            command:
+              - sh
+              - -c
+              - |
+                set -e
+                IMG=postgres:15-alpine
+                docker pull "$IMG"
+                CONTEXT=$(kubectl config current-context)
+                case "$CONTEXT" in
+                  k3d-*) k3d image import "$IMG" -c "${CONTEXT#k3d-}" ;;
+                  *) echo "Skipping k3d import (context is $CONTEXT, not k3d-*)" ;;
+                esac
+
+profiles:
+  # Skip re-applying the DB StatefulSet when only app code changes.
+  # Requires user-db already running from a completed full `skaffold dev --cleanup=false`.
+  # Usage: skaffold dev -p apps --cleanup=false
+  - name: apps
+    manifests:
+      rawYaml:
+        - k8s/ingress.yaml
+        - k8s/user-db-config.yaml
+        - k8s/user-service.yaml
+        - k8s/product-service.yaml
+        - k8s/order-service-config.yaml
+        - k8s/order-service.yaml
+
+  # Usage: skaffold run -p prod --default-repo my-docker-registry.com/ecommerce
+  - name: prod
+    build:
+      local:
+        push: true
+      tagPolicy:
+        sha256: {}
+      artifacts:
+        - image: user-service
+          context: svc/user-service
+          docker:
+            target: prod
+        - image: product-service
+          context: svc/product-service
+          docker:
+            target: prod
+        - image: order-service
+          context: svc/order-service
+          docker:
+            target: prod

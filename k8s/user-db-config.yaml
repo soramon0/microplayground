@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: user-db-secret
+type: Opaque
+stringData:
+  POSTGRES_PASSWORD: "supersecretpassword"
+  DATABASE_URL: "postgresql://user_admin:supersecretpassword@user-db-service:5432/users_database?schema=public"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: user-db-config
+data:
+  POSTGRES_USER: "user_admin"
+  POSTGRES_DB: "users_database"
+  POSTGRES_HOST: "user-db-service"
+  POSTGRES_PORT: "5432"
