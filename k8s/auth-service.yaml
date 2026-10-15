@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      initContainers:
+        - name: wait-for-auth-db
+          image: postgres:15-alpine
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: auth-db-config
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Postgres at ${POSTGRES_HOST}:${POSTGRES_PORT}..."
+              until pg_isready -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do
+                sleep 2
+              done
+              echo "Postgres is ready"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+      containers:
+        - name: auth-service
+          image: auth-service:latest
+          imagePullPolicy: Never # Forces K8s to use your local Docker image
+          ports:
+            - containerPort: 3000
+          env:
+            - name: PORT
+              value: "3000"
+            - name: NATS_URL
+              value: "nats://nats-service:4222"
+          envFrom:
+            - configMapRef:
+                name: auth-db-config
+            - secretRef:
+                name: auth-db-secret
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service # This becomes the internal DNS name
+spec:
+  selector:
+    app: auth-service
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000

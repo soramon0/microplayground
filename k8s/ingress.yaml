@@ -17,6 +17,13 @@ spec:
                 name: user-service
                 port:
                   number: 3000
+          - path: /auth
+            pathType: Prefix
+            backend:
+              service:
+                name: auth-service
+                port:
+                  number: 3000
           - path: /products
             pathType: Prefix
             backend:

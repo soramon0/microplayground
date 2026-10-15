@@ -20,9 +20,9 @@ k3d cluster create ecommerce-cluster -p "8080:80@loadbalancer"
 skaffold dev --cleanup=false
 ```
 
-Wait until **all** workloads are ready (including `user-db`), then you can Ctrl+C. `--cleanup=false` keeps them running (by default Skaffold deletes everything on exit).
+Wait until **all** workloads are ready (including `user-db` and `auth-db`), then you can Ctrl+C. `--cleanup=false` keeps them running (by default Skaffold deletes everything on exit).
 
-Once `user-db` is already Running, iterate on apps only (does not rebuild or re-apply the DB StatefulSet):
+Once the DBs are already Running, iterate on apps only (does not rebuild or re-apply DB StatefulSets / NATS):
 
 ```bash
 skaffold dev -p apps --cleanup=false
@@ -34,6 +34,7 @@ Skaffold file-syncs only the paths listed under each artifact’s `sync` in `ska
 
 ```bash
 curl http://localhost:8080/users/verify
+curl http://localhost:8080/auth/verify
 curl http://localhost:8080/products/99
 curl -X POST http://localhost:8080/orders/checkout
 ```
@@ -64,7 +65,7 @@ k3d cluster list
 k3d cluster delete <unused-name>
 ```
 
-Before deploy, a Skaffold hook pulls `postgres:15-alpine` and `k3d image import`s it into the cluster. Prefer `skaffold dev -p apps --cleanup=false` for day-to-day work so the DB StatefulSet is left alone. Without `--cleanup=false`, Ctrl+C removes the DB and you need a full `skaffold dev` again.
+Before deploy, a Skaffold hook pulls `postgres:15-alpine` and `nats:alpine` and `k3d image import`s them into the cluster. Prefer `skaffold dev -p apps --cleanup=false` for day-to-day work so DB StatefulSets / NATS are left alone. Without `--cleanup=false`, Ctrl+C removes them and you need a full `skaffold dev` again.
 
 ## Without Skaffold
 
@@ -76,16 +77,20 @@ k3d cluster create ecommerce-cluster -p "8080:80@loadbalancer"
 
 # 2. Build images (names must match k8s/*.yaml)
 docker build -t user-service:latest --target dev svc/user-service
+docker build -t auth-service:latest --target dev svc/auth-service
 docker build -t product-service:latest --target dev svc/product-service
 docker build -t order-service:latest --target dev svc/order-service
 docker pull postgres:15-alpine
+docker pull nats:alpine
 
 # 3. Load images into the k3d node (avoids pulling from a registry)
 k3d image import \
   user-service:latest \
+  auth-service:latest \
   product-service:latest \
   order-service:latest \
   postgres:15-alpine \
+  nats:alpine \
   -c ecommerce-cluster
 
 # 4. Deploy
@@ -112,7 +117,7 @@ How you build images and run them on a local cluster.
 
 | Tool                                                         | Role                                                                                        |
 | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| **[Docker](https://www.docker.com/)**                        | Builds service images (`Dockerfile` multi-stage targets) and pulls Postgres for Skaffold.   |
+| **[Docker](https://www.docker.com/)**                        | Builds service images (`Dockerfile` multi-stage targets) and pulls Postgres/NATS for Skaffold. |
 | **[k3d](https://k3d.io/)**                                   | Runs a local [k3s](https://k3s.io/) Kubernetes cluster in Docker (`k3d-ecommerce-cluster`). |
 | **[Skaffold](https://skaffold.dev/)**                        | Builds images, deploys `k8s/*.yaml`, and file-syncs code during `skaffold dev`.             |
 | **[kubectl](https://kubernetes.io/docs/reference/kubectl/)** | Applies manifests and inspects cluster state (used by Skaffold and for debugging).          |
@@ -124,9 +129,10 @@ What routes traffic and persists data inside the cluster.
 | Tool                                                                            | Role                                                                                  |
 | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | **[Kubernetes](https://kubernetes.io/)**                                        | Orchestrates Deployments, StatefulSets, Services, Ingress, ConfigMaps, Secrets, PVCs. |
-| **[Traefik](https://traefik.io/)**                                              | Ingress controller (default in k3s/k3d); routes `/users`, `/products`, `/orders`.     |
+| **[Traefik](https://traefik.io/)**                                              | Ingress controller (default in k3s/k3d); routes `/users`, `/auth`, `/products`, `/orders`. |
 | **[local-path-provisioner](https://github.com/rancher/local-path-provisioner)** | Dynamic volumes for Postgres (`StorageClass: local-path`).                            |
-| **[PostgreSQL](https://www.postgresql.org/)** (`postgres:15-alpine`)            | User-service database (`user-db` StatefulSet).                                        |
+| **[PostgreSQL](https://www.postgresql.org/)** (`postgres:15-alpine`)            | Databases for user-service and auth-service (`user-db`, `auth-db` StatefulSets).      |
+| **[NATS](https://nats.io/)** (`nats:alpine`)                                    | Messaging (JetStream enabled via `-js` in `k8s/nats.yaml`).                           |
 
 ### Services
 
@@ -135,10 +141,11 @@ The microservices in `svc/` and the stacks they run on.
 | Service             | Language / runtime                                                             | Framework & helpers                                                                           |
 | ------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
 | **user-service**    | [Node.js](https://nodejs.org/) + [TypeScript](https://www.typescriptlang.org/) | [NestJS](https://nestjs.com/) (Express platform), [RxJS](https://rxjs.dev/)                   |
+| **auth-service**    | Node.js + TypeScript                                                           | NestJS (Express platform), RxJS, [Prisma](https://www.prisma.io/) 8                            |
 | **product-service** | Node.js + TypeScript                                                           | NestJS (Express platform), RxJS                                                               |
 | **order-service**   | [Go](https://go.dev/)                                                          | stdlib `net/http`; [Air](https://github.com/air-verse/air) for live reload in the `dev` image |
 
-### Node / NestJS toolchain (user & product services)
+### Node / NestJS toolchain (user, auth & product services)
 
 Dev tooling shared by the TypeScript NestJS services.
 
@@ -160,4 +167,5 @@ Docker base images referenced by the service Dockerfiles.
 | -------------------- | --------------------------------------------------------------------- |
 | `node:24-alpine`     | NestJS `dev` / build stages                                           |
 | `golang:*-alpine`    | Order-service build and `dev` (Air)                                   |
-| `postgres:15-alpine` | `user-db` StatefulSet + wait init (imported via Skaffold deploy hook) |
+| `postgres:15-alpine` | `user-db` / `auth-db` StatefulSets + wait inits (imported via Skaffold deploy hook) |
+| `nats:alpine`        | NATS with JetStream (imported via Skaffold deploy hook)                             |

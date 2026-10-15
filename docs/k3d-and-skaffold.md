@@ -51,5 +51,5 @@ flowchart TD
 
 ### Practical notes for this repo
 
-- Prefer `skaffold dev --cleanup=false` so Ctrl+C does not tear down workloads (especially `user-db`). Day-to-day iteration: `skaffold dev -p apps --cleanup=false`.
+- Prefer `skaffold dev --cleanup=false` so Ctrl+C does not tear down workloads (especially `user-db` / `auth-db`). Day-to-day iteration: `skaffold dev -p apps --cleanup=false`.
 - Only paths under each artifact’s `sync` hot-reload in the container. Other files (`package.json`, Dockerfiles, lockfiles, …) need an image rebuild; with `--cleanup=false`, old pods can keep serving a previous image until something rebuilds and redeploys. Details are in the [root README](../README.md).

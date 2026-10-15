@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: nats-service
+spec:
+  selector:
+    app: nats
+  ports:
+    - protocol: TCP
+      port: 4222
+      targetPort: 4222
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nats
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nats
+  template:
+    metadata:
+      labels:
+        app: nats
+    spec:
+      containers:
+        - name: nats
+          image: nats:alpine
+          imagePullPolicy: IfNotPresent
+          args: ["-js"]
+          ports:
+            - containerPort: 4222
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi

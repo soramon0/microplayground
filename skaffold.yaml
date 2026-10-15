@@ -41,6 +41,18 @@ build:
             dest: .
           - src: "src/prisma/**/*.json"
             dest: .
+    - image: auth-service
+      context: svc/auth-service
+      docker:
+        target: dev
+      sync:
+        manual:
+          - src: "src/**/*.ts"
+            dest: .
+          - src: "src/prisma/**/*.prisma"
+            dest: .
+          - src: "src/prisma/**/*.json"
+            dest: .
 
 manifests:
   rawYaml:
@@ -49,7 +61,7 @@ manifests:
 deploy:
   statusCheckDeadlineSeconds: 300 # Fail clearly if pods/PVCs stay pending (e.g. disk pressure)
   kubectl:
-    # Pull Postgres and load it into k3d before applying manifests (third-party image).
+    # Pull third-party images and load them into k3d before applying manifests.
     hooks:
       before:
         - host:
@@ -58,17 +70,18 @@ deploy:
               - -c
               - |
                 set -e
-                IMG=postgres:15-alpine
-                docker pull "$IMG"
                 CONTEXT=$(kubectl config current-context)
-                case "$CONTEXT" in
-                  k3d-*) k3d image import "$IMG" -c "${CONTEXT#k3d-}" ;;
-                  *) echo "Skipping k3d import (context is $CONTEXT, not k3d-*)" ;;
-                esac
+                for IMG in postgres:15-alpine nats:alpine; do
+                  docker pull "$IMG"
+                  case "$CONTEXT" in
+                    k3d-*) k3d image import "$IMG" -c "${CONTEXT#k3d-}" ;;
+                    *) echo "Skipping k3d import for $IMG (context is $CONTEXT, not k3d-*)" ;;
+                  esac
+                done
 
 profiles:
-  # Skip re-applying the DB StatefulSet when only app code changes.
-  # Requires user-db already running from a completed full `skaffold dev --cleanup=false`.
+  # Skip re-applying DB StatefulSets (and NATS) when only app code changes.
+  # Requires user-db / auth-db already running from a completed full `skaffold dev --cleanup=false`.
   # Usage: skaffold dev -p apps --cleanup=false
   - name: apps
     manifests:
@@ -76,6 +89,8 @@ profiles:
         - k8s/ingress.yaml
         - k8s/user-db-config.yaml
         - k8s/user-service.yaml
+        - k8s/auth-db-config.yaml
+        - k8s/auth-service.yaml
         - k8s/product-service.yaml
         - k8s/order-service-config.yaml
         - k8s/order-service.yaml
@@ -94,6 +109,10 @@ profiles:
             target: prod
         - image: product-service
           context: svc/product-service
+          docker:
+            target: prod
+        - image: auth-service
+          context: svc/auth-service
           docker:
             target: prod
         - image: order-service
