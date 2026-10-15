@@ -2,6 +2,8 @@
 
 Overview of the tools and technologies used in this project.
 
+Deeper background: [docs/](./docs/) ([k3d and Skaffold](./docs/k3d-and-skaffold.md), [Kubernetes](./docs/kubernetes.md)).
+
 ## Getting started
 
 Prerequisites: [Docker](https://www.docker.com/), [k3d](https://k3d.io/), [Skaffold](https://skaffold.dev/), and [kubectl](https://kubernetes.io/docs/reference/kubectl/).
@@ -25,6 +27,8 @@ Once `user-db` is already Running, iterate on apps only (does not rebuild or re-
 ```bash
 skaffold dev -p apps --cleanup=false
 ```
+
+Skaffold file-syncs only the paths listed under each artifact’s `sync` in `skaffold.yaml` (e.g. `src/**/*.ts`, Go sources). Edits there hot-reload inside the running `dev` containers. Changes to anything else (`package.json`, `Dockerfile`, lockfiles, config, etc.) need an image rebuild. With `--cleanup=false`, workloads keep running after you exit, so they can keep serving an older image across `skaffold dev` sessions until something actually rebuilds and redeploys (restart `skaffold dev` after those files change, or `skaffold build -b <service> --cache-artifacts=false` if a stale tag was reused).
 
 1. Hit the ingress on localhost:
 
