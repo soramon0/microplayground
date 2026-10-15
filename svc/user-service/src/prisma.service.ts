@@ -5,8 +5,9 @@ import { db } from './prisma/db.js';
 export class PrismaService implements OnModuleDestroy {
   readonly db = db;
 
-  createUser(data: { email: string; role?: string }) {
+  createUser(data: { email: string; role?: string; id?: string }) {
     return this.db.orm.public.User.create({
+      ...(data.id ? { id: data.id } : {}),
       email: data.email,
       role: data.role ?? 'customer',
     });
@@ -14,6 +15,19 @@ export class PrismaService implements OnModuleDestroy {
 
   findFirstUser() {
     return this.db.orm.public.User.first();
+  }
+
+  findUserById(id: string) {
+    return this.db.orm.public.User.first({ id });
+  }
+
+  /** Idempotent profile create for AUTH.userRegistered consumers. */
+  async ensureUserProfile(data: { id: string; email: string }) {
+    const existing = await this.findUserById(data.id);
+    if (existing) {
+      return existing;
+    }
+    return this.createUser({ id: data.id, email: data.email });
   }
 
   async onModuleDestroy() {

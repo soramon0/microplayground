@@ -1,0 +1,10 @@
+// use prisma-8
+
+model Credential {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    TimestampString @default(now())
+
+  @@map("credentials")
+}
