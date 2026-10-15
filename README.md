@@ -28,16 +28,20 @@ Once the DBs are already Running, iterate on apps only (does not rebuild or re-a
 skaffold dev -p apps --cleanup=false
 ```
 
-Skaffold file-syncs only the paths listed under each artifact’s `sync` in `skaffold.yaml` (e.g. `src/**/*.ts`, Go sources). Edits there hot-reload inside the running `dev` containers. Changes to anything else (`package.json`, `Dockerfile`, lockfiles, config, etc.) need an image rebuild. With `--cleanup=false`, workloads keep running after you exit, so they can keep serving an older image across `skaffold dev` sessions until something actually rebuilds and redeploys (restart `skaffold dev` after those files change, or `skaffold build -b <service> --cache-artifacts=false` if a stale tag was reused).
+Skaffold file-syncs only the paths listed under each artifact’s `sync` in `skaffold.yaml` (e.g. `src/**/*.ts`, `src/prisma/**/*.{prisma,json}`, Go sources). Edits there hot-reload inside the running `dev` containers. Files outside sync (notably `contract.d.ts`, `package.json`, lockfiles, `Dockerfile`) need a manual copy or image rebuild — e.g. `kubectl cp svc/auth-service/src/prisma/contract.d.ts "$POD:/app/src/prisma/contract.d.ts" -c auth-service`, or `skaffold build -b auth-service --cache-artifacts=false`. With `--cleanup=false`, workloads keep running after you exit, so they can keep serving an older image across `skaffold dev` sessions until something actually rebuilds and redeploys.
 
 1. Hit the ingress on localhost:
 
 ```bash
 curl http://localhost:8080/users/verify
-curl http://localhost:8080/auth/verify
+curl -X POST http://localhost:8080/auth/register \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"alice@example.com","password":"password1"}'
 curl http://localhost:8080/products/99
 curl -X POST http://localhost:8080/orders/checkout
 ```
+
+`POST /auth/register` stores credentials in `auth-db`, publishes `AUTH.userRegistered` on NATS JetStream, and `user-service` consumes that event to create a profile in `user-db`.
 
 Useful checks:
 
@@ -140,9 +144,9 @@ The microservices in `svc/` and the stacks they run on.
 
 | Service             | Language / runtime                                                             | Framework & helpers                                                                           |
 | ------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| **user-service**    | [Node.js](https://nodejs.org/) + [TypeScript](https://www.typescriptlang.org/) | [NestJS](https://nestjs.com/) (Express platform), [RxJS](https://rxjs.dev/)                   |
-| **auth-service**    | Node.js + TypeScript                                                           | NestJS (Express platform), RxJS, [Prisma](https://www.prisma.io/) 8                            |
-| **product-service** | Node.js + TypeScript                                                           | NestJS (Express platform), RxJS                                                               |
+| **user-service**    | [Node.js](https://nodejs.org/) + [TypeScript](https://www.typescriptlang.org/) | NestJS, [Prisma](https://www.prisma.io/) 8, NATS JetStream consumer (`AUTH.userRegistered`) |
+| **auth-service**    | Node.js + TypeScript                                                           | NestJS, Prisma 8, `class-validator`, NATS JetStream publisher (`POST /auth/register`)         |
+| **product-service** | Node.js + TypeScript                                                           | NestJS (Express platform), [RxJS](https://rxjs.dev/)                                          |
 | **order-service**   | [Go](https://go.dev/)                                                          | stdlib `net/http`; [Air](https://github.com/air-verse/air) for live reload in the `dev` image |
 
 ### Node / NestJS toolchain (user, auth & product services)
@@ -152,6 +156,7 @@ Dev tooling shared by the TypeScript NestJS services.
 | Tool                                                      | Role                                                |
 | --------------------------------------------------------- | --------------------------------------------------- |
 | **[Nest CLI](https://docs.nestjs.com/cli/overview)**      | Build and run (`nest build`, `nest start --watch`). |
+| **[class-validator](https://github.com/typestack/class-validator)** / **[class-transformer](https://github.com/typestack/class-transformer)** | Request DTOs + global `ValidationPipe` (auth-service). |
 | **[npm](https://www.npmjs.com/)**                         | Package install and scripts.                        |
 | **[Prettier](https://prettier.io/)**                      | Code formatting.                                    |
 | **[Oxlint](https://oxc.rs/docs/guide/usage/linter.html)** | Linting (`oxlint --type-aware`).                    |

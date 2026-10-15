@@ -18,10 +18,10 @@ Images built on the host Docker daemon are not automatically visible inside the 
 
 ## Why we use k3d
 
-- **Same shapes as production** — Deployments, Services, Ingress, ConfigMaps, Secrets, PVCs, and a StatefulSet for Postgres, not ad-hoc `docker compose` networking that diverges from how the apps are meant to run.
+- **Same shapes as production** — Deployments, Services, Ingress, ConfigMaps, Secrets, PVCs, Postgres StatefulSets, and NATS, not ad-hoc `docker compose` networking that diverges from how the apps are meant to run.
 - **Light enough for a sandbox** — k3s/k3d is smaller and faster to start than a full multi-node cloud cluster, while still exercising Kubernetes behavior.
 - **Docker-native** — If you already use Docker Desktop (or Engine), the cluster is just more containers; create/delete is a single k3d command.
-- **Shared ingress on localhost** — One published port for `/users`, `/products`, and `/orders` matches how the services are wired in `k8s/ingress.yaml`.
+- **Shared ingress on localhost** — One published port for `/users`, `/auth`, `/products`, and `/orders` matches how the services are wired in `k8s/ingress.yaml`.
 
 Alternatives (kind, minikube, a remote cluster) can work; this project standardizes on k3d so docs and scripts stay simple.
 
@@ -52,4 +52,4 @@ flowchart TD
 ### Practical notes for this repo
 
 - Prefer `skaffold dev --cleanup=false` so Ctrl+C does not tear down workloads (especially `user-db` / `auth-db`). Day-to-day iteration: `skaffold dev -p apps --cleanup=false`.
-- Only paths under each artifact’s `sync` hot-reload in the container. Other files (`package.json`, Dockerfiles, lockfiles, …) need an image rebuild; with `--cleanup=false`, old pods can keep serving a previous image until something rebuilds and redeploys. Details are in the [root README](../README.md).
+- Only paths under each artifact’s `sync` hot-reload in the container (for Nest services: `src/**/*.ts`, `src/prisma/**/*.{prisma,json}`). Other files (`contract.d.ts`, `package.json`, Dockerfiles, lockfiles, …) need `kubectl cp` or an image rebuild; with `--cleanup=false`, old pods can keep serving a previous image until something rebuilds and redeploys. Details are in the [root README](../README.md).

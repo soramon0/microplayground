@@ -12,8 +12,8 @@ Locally the API server is provided by **k3d/k3s** (see [k3d and Skaffold](./k3d-
 
 | Manifest | Kind(s) | Role |
 | -------- | ------- | ---- |
-| `user-service.yaml` | Deployment, Service | NestJS user API; init container waits for Postgres |
-| `auth-service.yaml` | Deployment, Service | NestJS auth API; init container waits for Postgres |
+| `user-service.yaml` | Deployment, Service | NestJS user API + NATS consumer; init waits for Postgres |
+| `auth-service.yaml` | Deployment, Service | NestJS auth API (`POST /auth/register`); init waits for Postgres |
 | `product-service.yaml` | Deployment, Service | NestJS product API |
 | `order-service.yaml` | Deployment, Service | Go order API |
 | `order-service-config.yaml` | ConfigMap | Env for order-service (e.g. downstream URLs) |
@@ -41,6 +41,16 @@ Skaffold applies these (all of them by default, or the app subset with `-p apps`
   - `/orders` → `order-service:8080`
 
 With the usual k3d port map, that is exposed on the host as `http://localhost:8080/...`.
+
+## Auth → NATS → user profile
+
+Registration is split across two services and JetStream:
+
+1. Client calls `POST /auth/register` on `auth-service`.
+2. `auth-service` writes credentials to `auth-db` and publishes `AUTH.userRegistered`.
+3. `user-service` consumes that subject (durable consumer on the `AUTH` stream) and upserts a profile in `user-db`.
+
+Both app Deployments get `NATS_URL=nats://nats-service:4222`. Order checkout still verifies via `user-service` (`USER_SERVICE_URL`), not auth directly.
 
 ## Config and secrets
 
@@ -70,6 +80,8 @@ flowchart TD
   authPods -->|connects to| authDbSvc[Service/auth-db-service]
   userDbSvc --> userDb[(StatefulSet/user-db)]
   authDbSvc --> authDb[(StatefulSet/auth-db)]
+  authPods -->|publish AUTH.userRegistered| nats[Service/nats-service]
+  nats -->|consume| userPods
 ```
 
 Inspect with:
