@@ -18,7 +18,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'0ab6cc538bc6e7295215a0e97ee3aae7a70fdb81625e252c86b08dae7d520e23'>;
+  StorageHashBase<'83e68c49dd03ffb3d5851f6adfde9a8dfec2d8520ace162d7831cf5c3aa9e2b9'>;
 export type ExecutionHash =
   ExecutionHashBase<'1a4c52e2252a779976feb95d8322114551bc85dd7de495d59b67b7beb58c55cc'>;
 export type ProfileHash =
@@ -235,7 +235,7 @@ type DefaultLiteralValue<CodecId extends string, Encoded> = CodecId extends keyo
 export type FieldOutputTypes = {
   readonly public: {
     readonly Credential: {
-      readonly createdAt: CodecTypes['pg/timestamp-string@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly email: CodecTypes['pg/text@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly passwordHash: CodecTypes['pg/text@1']['output'];
@@ -245,7 +245,7 @@ export type FieldOutputTypes = {
 export type FieldInputTypes = {
   readonly public: {
     readonly Credential: {
-      readonly createdAt: CodecTypes['pg/timestamp-string@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly email: CodecTypes['pg/text@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly passwordHash: CodecTypes['pg/text@1']['input'];
@@ -255,7 +255,7 @@ export type FieldInputTypes = {
 export type StorageColumnTypes = {
   readonly public: {
     readonly credentials: {
-      readonly createdAt: CodecTypes['pg/timestamp-string@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly email: CodecTypes['pg/text@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly passwordHash: CodecTypes['pg/text@1']['output'];
@@ -265,7 +265,7 @@ export type StorageColumnTypes = {
 export type StorageColumnInputTypes = {
   readonly public: {
     readonly credentials: {
-      readonly createdAt: CodecTypes['pg/timestamp-string@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly email: CodecTypes['pg/text@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly passwordHash: CodecTypes['pg/text@1']['input'];
@@ -275,7 +275,7 @@ export type StorageColumnInputTypes = {
 
 export namespace Models {
   export type public_Credential = {
-    createdAt: CodecTypes['pg/timestamp-string@1']['output'];
+    createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
     email: CodecTypes['pg/text@1']['output'];
     id: CodecTypes['pg/text@1']['output'];
     passwordHash: CodecTypes['pg/text@1']['output'];
@@ -310,8 +310,8 @@ type ContractBase = Omit<
             readonly credentials: {
               columns: {
                 readonly createdAt: {
-                  readonly dataType: 'pg/timestamp';
-                  readonly codecId: 'pg/timestamp-string@1';
+                  readonly dataType: 'pg/timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
                   readonly nullable: false;
                   readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
                   readonly many: false;
@@ -366,7 +366,7 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: {
                   readonly kind: 'scalar';
-                  readonly codecId: 'pg/timestamp-string@1';
+                  readonly codecId: 'pg/timestamptz-string@1';
                 };
               };
               readonly email: {

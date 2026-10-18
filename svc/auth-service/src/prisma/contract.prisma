@@ -4,7 +4,7 @@ model Credential {
   id           String   @id @default(uuid())
   email        String   @unique
   passwordHash String
-  createdAt    TimestampString @default(now())
+  createdAt    TimestamptzString @default(now())
 
   @@map("credentials")
 }
