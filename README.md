@@ -2,7 +2,7 @@
 
 Overview of the tools and technologies used in this project.
 
-Deeper background: [docs/](./docs/) ([k3d and Skaffold](./docs/k3d-and-skaffold.md), [Kubernetes](./docs/kubernetes.md)).
+Deeper background: [docs/](./docs/) ([architecture](./docs/architecture.md), [k3d and Skaffold](./docs/k3d-and-skaffold.md), [Kubernetes](./docs/kubernetes.md)).
 
 ## Getting started
 

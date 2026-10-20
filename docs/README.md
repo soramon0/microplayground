@@ -6,6 +6,7 @@ How this repo runs locally: a small Kubernetes cluster on your machine, plus a f
 
 | Doc | What it covers |
 | --- | -------------- |
+| [Architecture](./architecture.md) | Target architecture: events, outbox, gRPC, data isolation, tracing, K8s, … |
 | [k3d and Skaffold](./k3d-and-skaffold.md) | What k3d is, why we use it, and why Skaffold sits on top |
 | [Kubernetes](./kubernetes.md) | How this project uses Kubernetes (`k8s/` manifests, networking, data) |
 
