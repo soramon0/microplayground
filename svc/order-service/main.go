@@ -1,55 +1,65 @@
 package main
 
 import (
-	"encoding/json"
+	"context"
 	"log"
+	"net"
 	"net/http"
 	"os"
+	"os/signal"
+	"time"
+
+	"github.com/soramon0/order-service/api"
+	"github.com/soramon0/order-service/utils"
 )
 
 func main() {
-	http.HandleFunc("/orders/checkout", checkoutHandler)
-	log.Println("Order service running on port 8080...")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
 }
 
-func envOr(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
+func newHttpHandler() http.Handler {
+	api := &api.OrderSvc{
+		Version:       "0.0.1",
+		UserSvcURL:    utils.EnvOr("USER_SERVICE_URL", "http://user-service:3000"),
+		ProductSvcURL: utils.EnvOr("PRODUCT_SERVICE_URL", "http://product-service:3000"),
 	}
-	return fallback
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/orders/checkout", api.CheckoutHandler)
+	return mux
 }
 
-func checkoutHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Only POST allowed", http.StatusMethodNotAllowed)
-		return
+func run() (err error) {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	port := utils.EnvOr("SRV_PORT", ":8080")
+	if port[0] != ':' {
+		port = ":" + port
+	}
+	srv := &http.Server{
+		Addr:         port,
+		BaseContext:  func(l net.Listener) context.Context { return ctx },
+		ReadTimeout:  time.Second,
+		WriteTimeout: 10 * time.Second,
+		Handler:      newHttpHandler(),
 	}
 
-	userServiceURL := envOr("USER_SERVICE_URL", "http://user-service:3000")
-	productServiceURL := envOr("PRODUCT_SERVICE_URL", "http://product-service:3000")
+	srvErr := make(chan error, 1)
+	go func() {
+		log.Printf("Running server on http://0.0.0.0%s", port)
+		srvErr <- srv.ListenAndServe()
+	}()
 
-	// 1. Verify User via the internal K8s network
-	userResp, err := http.Get(userServiceURL + "/users/verify")
-	if err != nil || userResp.StatusCode != 200 {
-		http.Error(w, "Unauthorized or User Service Down", http.StatusUnauthorized)
-		return
+	select {
+	case err = <-srvErr:
+		return err
+	case <-ctx.Done():
+		stop()
 	}
-	defer userResp.Body.Close()
 
-	// 2. Check Product Stock via the internal K8s network
-	prodResp, err := http.Get(productServiceURL + "/products/99")
-	if err != nil || prodResp.StatusCode != 200 {
-		http.Error(w, "Product out of stock or Product Service Down", http.StatusBadRequest)
-		return
-	}
-	defer prodResp.Body.Close()
-
-	// 3. Process Order (Mocked)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{
-		"status":  "success",
-		"message": "Order placed successfully",
-	})
+	err = srv.Shutdown(context.Background())
+	return err
 }
