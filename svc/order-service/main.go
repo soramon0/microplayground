@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net"
 	"net/http"
@@ -9,8 +10,10 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/soramon0/order-service/api"
 	"github.com/soramon0/order-service/utils"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 func main() {
@@ -28,12 +31,24 @@ func newHttpHandler() http.Handler {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/orders/checkout", api.CheckoutHandler)
-	return mux
+	// Expose the Prometheus metrics endpoint using promhttp.Handler()
+	mux.Handle("/metrics", promhttp.Handler())
+	handler := otelhttp.NewHandler(mux, "/")
+	return handler
 }
 
 func run() (err error) {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
+
+	otelShutdown, err := setupOTelSDK(ctx)
+	if err != nil {
+		return err
+	}
+	// Handle shutdown properly so nothing leaks.
+	defer func() {
+		err = errors.Join(err, otelShutdown(context.Background()))
+	}()
 
 	port := utils.EnvOr("SRV_PORT", ":8080")
 	if port[0] != ':' {
