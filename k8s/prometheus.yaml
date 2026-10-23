@@ -4,7 +4,7 @@ metadata:
   name: prometheus-service
 spec:
   selector:
-    app: nats
+    app: prometheus
   ports:
     - protocol: TCP
       port: 9090
