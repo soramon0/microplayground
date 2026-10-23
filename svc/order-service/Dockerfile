@@ -10,7 +10,7 @@ COPY go.mod go.sum* ./
 RUN go mod download
 COPY . .
 
-EXPOSE 8080
+EXPOSE 3000
 
 CMD ["air"]
 
@@ -28,6 +28,6 @@ FROM alpine:latest AS prod
 WORKDIR /app
 COPY --from=prod-builder /app/order-api .
 
-EXPOSE 8080
+EXPOSE 3000
 
 CMD ["./order-api"]

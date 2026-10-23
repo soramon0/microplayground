@@ -37,4 +37,4 @@ spec:
               service:
                 name: order-service
                 port:
-                  number: 8080
+                  number: 3000

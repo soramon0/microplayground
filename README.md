@@ -69,7 +69,7 @@ k3d cluster list
 k3d cluster delete <unused-name>
 ```
 
-Before deploy, a Skaffold hook pulls `postgres:15-alpine` and `nats:alpine` and `k3d image import`s them into the cluster. Prefer `skaffold dev -p apps --cleanup=false` for day-to-day work so DB StatefulSets / NATS are left alone. Without `--cleanup=false`, Ctrl+C removes them and you need a full `skaffold dev` again.
+Prefer `skaffold dev -p apps --cleanup=false` for day-to-day work so DB StatefulSets / NATS are left alone. Without `--cleanup=false`, Ctrl+C removes them and you need a full `skaffold dev` again. Postgres/NATS use `imagePullPolicy: IfNotPresent`, so the cluster pulls those public images itself.
 
 ## Without Skaffold
 
@@ -121,7 +121,7 @@ How you build images and run them on a local cluster.
 
 | Tool                                                         | Role                                                                                        |
 | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| **[Docker](https://www.docker.com/)**                        | Builds service images (`Dockerfile` multi-stage targets) and pulls Postgres/NATS for Skaffold. |
+| **[Docker](https://www.docker.com/)**                        | Builds service images (`Dockerfile` multi-stage targets). |
 | **[k3d](https://k3d.io/)**                                   | Runs a local [k3s](https://k3s.io/) Kubernetes cluster in Docker (`k3d-ecommerce-cluster`). |
 | **[Skaffold](https://skaffold.dev/)**                        | Builds images, deploys `k8s/*.yaml`, and file-syncs code during `skaffold dev`.             |
 | **[kubectl](https://kubernetes.io/docs/reference/kubectl/)** | Applies manifests and inspects cluster state (used by Skaffold and for debugging).          |

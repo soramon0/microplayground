@@ -50,7 +50,7 @@ func run() (err error) {
 		err = errors.Join(err, otelShutdown(context.Background()))
 	}()
 
-	port := utils.EnvOr("SRV_PORT", ":8080")
+	port := utils.EnvOr("SRV_PORT", ":3000")
 	if port[0] != ':' {
 		port = ":" + port
 	}
@@ -64,7 +64,7 @@ func run() (err error) {
 
 	srvErr := make(chan error, 1)
 	go func() {
-		log.Printf("Running server on http://0.0.0.0%s", port)
+		log.Printf("Running order server on http://0.0.0.0%s", port)
 		srvErr <- srv.ListenAndServe()
 	}()
 

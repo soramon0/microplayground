@@ -10,19 +10,19 @@ Locally the API server is provided by **k3d/k3s** (see [k3d and Skaffold](./k3d-
 
 ## Layout (`k8s/`)
 
-| Manifest | Kind(s) | Role |
-| -------- | ------- | ---- |
-| `user-service.yaml` | Deployment, Service | NestJS user API + NATS consumer; init waits for Postgres |
-| `auth-service.yaml` | Deployment, Service | NestJS auth API (`POST /auth/register`); init waits for Postgres |
-| `product-service.yaml` | Deployment, Service | NestJS product API |
-| `order-service.yaml` | Deployment, Service | Go order API |
-| `order-service-config.yaml` | ConfigMap | Env for order-service (e.g. downstream URLs) |
-| `user-db.yaml` | StatefulSet, Service, PVC template | Postgres for user-service |
-| `user-db-config.yaml` | ConfigMap, Secret | DB connection settings and credentials |
-| `auth-db.yaml` | StatefulSet, Service, PVC template | Postgres for auth-service |
-| `auth-db-config.yaml` | ConfigMap, Secret | Auth DB connection settings and credentials |
-| `nats.yaml` | Deployment, Service | NATS with JetStream (`-js`) |
-| `ingress.yaml` | Ingress | Path-based routing via Traefik |
+| Manifest                    | Kind(s)                            | Role                                                             |
+| --------------------------- | ---------------------------------- | ---------------------------------------------------------------- |
+| `user-service.yaml`         | Deployment, Service                | NestJS user API + NATS consumer; init waits for Postgres         |
+| `auth-service.yaml`         | Deployment, Service                | NestJS auth API (`POST /auth/register`); init waits for Postgres |
+| `product-service.yaml`      | Deployment, Service                | NestJS product API                                               |
+| `order-service.yaml`        | Deployment, Service                | Go order API                                                     |
+| `order-service-config.yaml` | ConfigMap                          | Env for order-service (e.g. downstream URLs)                     |
+| `user-db.yaml`              | StatefulSet, Service, PVC template | Postgres for user-service                                        |
+| `user-db-config.yaml`       | ConfigMap, Secret                  | DB connection settings and credentials                           |
+| `auth-db.yaml`              | StatefulSet, Service, PVC template | Postgres for auth-service                                        |
+| `auth-db-config.yaml`       | ConfigMap, Secret                  | Auth DB connection settings and credentials                      |
+| `nats.yaml`                 | Deployment, Service                | NATS with JetStream (`-js`)                                      |
+| `ingress.yaml`              | Ingress                            | Path-based routing via Traefik                                   |
 
 Skaffold applies these (all of them by default, or the app subset with `-p apps`). You can also `kubectl apply -f k8s/` by hand.
 
@@ -38,7 +38,7 @@ Skaffold applies these (all of them by default, or the app subset with `-p apps`
   - `/users` → `user-service:3000`
   - `/auth` → `auth-service:3000`
   - `/products` → `product-service:3000`
-  - `/orders` → `order-service:8080`
+  - `/orders` → `order-service:3000`
 
 With the usual k3d port map, that is exposed on the host as `http://localhost:8080/...`.
 
