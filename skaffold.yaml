@@ -60,24 +60,6 @@ manifests:
 
 deploy:
   statusCheckDeadlineSeconds: 300 # Fail clearly if pods/PVCs stay pending (e.g. disk pressure)
-  kubectl:
-    # Pull third-party images and load them into k3d before applying manifests.
-    hooks:
-      before:
-        - host:
-            command:
-              - sh
-              - -c
-              - |
-                set -e
-                CONTEXT=$(kubectl config current-context)
-                for IMG in postgres:15-alpine nats:alpine; do
-                  docker pull "$IMG"
-                  case "$CONTEXT" in
-                    k3d-*) k3d image import "$IMG" -c "${CONTEXT#k3d-}" ;;
-                    *) echo "Skipping k3d import for $IMG (context is $CONTEXT, not k3d-*)" ;;
-                  esac
-                done
 
 profiles:
   # Skip re-applying DB StatefulSets (and NATS) when only app code changes.
