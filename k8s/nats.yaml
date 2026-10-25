@@ -28,9 +28,15 @@ spec:
         - name: nats
           image: nats:alpine
           imagePullPolicy: IfNotPresent
-          args: ["-js"]
+          args:
+            - "-js"
+            - "-sd"
+            - "/data/jetstream"
           ports:
             - containerPort: 4222
+          volumeMounts:
+            - name: nats-storage
+              mountPath: /data/jetstream
           resources:
             requests:
               cpu: 50m
@@ -38,3 +44,18 @@ spec:
             limits:
               cpu: 250m
               memory: 128Mi
+      volumes:
+        - name: nats-storage
+          persistentVolumeClaim:
+            claimName: nats-storage
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nats-storage
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi

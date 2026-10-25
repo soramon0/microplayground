@@ -17,13 +17,25 @@ spec:
           image: grafana/grafana:latest
           ports:
             - containerPort: 3000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 300Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
           volumeMounts:
             - name: grafana-datasources
               mountPath: /etc/grafana/provisioning/datasources
+            - name: grafana-storage
+              mountPath: /var/lib/grafana
       volumes:
         - name: grafana-datasources
           configMap:
             name: grafana-datasources
+        - name: grafana-storage
+          persistentVolumeClaim:
+            claimName: grafana-storage
 
 ---
 apiVersion: v1
@@ -36,3 +48,14 @@ spec:
   ports:
     - port: 3000
       targetPort: 3000
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-storage
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
