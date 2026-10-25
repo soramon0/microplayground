@@ -31,6 +31,7 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus"
             - "--web.enable-lifecycle" # enable config hot-reload
           ports:
             - containerPort: 9090
@@ -38,6 +39,8 @@ spec:
             - name: config-volume
               mountPath: /etc/prometheus/prometheus.yml
               subPath: prometheus.yml
+            - name: prometheus-storage
+              mountPath: /prometheus
           resources:
             requests:
               cpu: 500m
@@ -49,3 +52,17 @@ spec:
         - name: config-volume
           configMap:
             name: prometheus-config
+        - name: prometheus-storage
+          persistentVolumeClaim:
+            claimName: prometheus-storage
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-storage
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
